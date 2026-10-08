@@ -1,5 +1,11 @@
 # Deskworlds
 
+> **This fork adds a fifth world, Koi pond.** Everything else is [chaseleantj/deskworlds](https://github.com/chaseleantj/deskworlds), unchanged, and all credit for the app and the other four worlds goes there.
+>
+> [![Koi pond](docs/images/koiscape-wide.png)](scenes/koiscape/)
+>
+> Koi pond was built in one evening with Claude Code, using the reference-and-critic loop the original author described. It has been tested on one machine (M4 Mac mini, 3440 x 1440, macOS 26.5), where it holds 30 fps on the Balanced profile and about 40 fps as wallpaper. It is new, so expect rough edges. The scene on its own is on the [`koiscape` branch](https://github.com/JeremyADay/deskworlds/tree/koiscape). Install it the same way as the original, below.
+
 [![Watch Riverbed](docs/images/riverscape.gif)](docs/videos/riverscape.mp4)
 
 [![Watch Betta](docs/images/bettascape.gif)](docs/videos/bettascape.mp4)
