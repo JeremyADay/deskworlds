@@ -24,13 +24,26 @@ const CURIOUS = {
   follow: 0.6,              // 1/s: how quickly a fish's attention catches up with the cursor
   turn: 0.22,               // rad/s at most a curious fish turns, on top of what its speed allows
 };
+// At a feeding koi are not all equally keen: some rush in, some drift over late or not at all.
+// A fish comes in for a pellet, takes it with a gulp and peels away to circle back, and when a
+// keener crowd is already at the food the rest wait on the edge, losing interest as they go.
+const FEED = {
+  keen: 0.22,               // below this a fish leaves the food alone
+  bite: 0.08,               // how much fuller each pellet leaves it
+  digest: 120,              // s for fullness to wear off
+  lap: [0.8, 2],            // s spent peeling away and circling back after a bite
+  crowd: 0.35,              // m about a pellet within which others going for food count as a crowd
+  ring: [0.2, 0.6],         // m out from the food a circling fish keeps, and how much more per metre of body
+  give: 8,                  // s going for one pellet before giving up on it and coming round again
+  room: 1.5,                // how much wider than their bodies two feeding fish keep apart
+};
 
 export const PELLET = {
   radius: [0.0045, 0.006],
   life: 38,                 // s from landing to gone
   fade: 6,                  // s of that over which it soaks and breaks up
   stagger: 0.5,             // s over which a pinch lands
-  spread: 0.2,              // radius of a pinch on the water
+  spread: 0.28,             // radius of a pinch on the water
   drift: 0.008,             // m/s wander across the film
   pinch: 10,
   click: [2, 4],
@@ -158,6 +171,10 @@ function createFish(index, random) {
     // fish, nosing about the bottom, or coming up to sip at the surface.
     mood: 'glide', moodTime: 0, moodFor: 4 + random() * 8, leader: null,
     interest: 0, interestFor: 0, bored: random() * 6, nerves: 0, notice: 0, gulp: 0,
+    // How greedy it is by nature; how keen it is at this feeding (rolled when food lands, -1
+    // between feedings); how full it is; and while feeding, how long is left of the lap it is
+    // circling and which way round (the lap runs on below zero, timing the run in for a pellet).
+    appetite: random() ** 1.6, hunger: -1, full: 0, lap: 0, side: 1,
     wake: random(), churn: random(), spine: new Float32Array(SPINE_JOINTS * 4),
   };
 }
@@ -303,18 +320,36 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
     }
   }
 
-  // Which pellet a hungry fish goes for: the nearest that not too many others are already after.
+  // Which pellet a hungry fish goes for: the nearest that not too many others are already after,
+  // and that it need not turn far for. One already beside its head it cannot bring its mouth to.
   function choosePellet(f) {
     let best = null, bestScore = Infinity;
     for (const p of pellets) {
       if (p.age < 0 || whole(p) < 0.3) continue;
-      const score = Math.hypot(p.x - f.x, p.z - f.z) + p.claims * 0.3;
+      const d = Math.hypot(p.x - f.x, p.z - f.z);
+      if (d < f.len * COM * 0.85) continue;
+      const score = d + p.claims * 0.3 + Math.abs(wrap(Math.atan2(p.z - f.z, p.x - f.x) - f.heading)) * 0.15;
       if (score < bestScore) { bestScore = score; best = p; }
     }
     return best;
   }
   function release(f) { if (f.target) { f.target.claims = Math.max(0, f.target.claims - 1); f.target = null; } }
   function setMode(f, mode) { if (f.mode === mode) return; f.mode = mode; f.modeTime = 0; }
+  const keenness = (f) => f.hunger - f.full;
+  // How many fish at least as keen as this one are already going for food near a pellet.
+  const crowdAt = (p, f) => fish.reduce((n, o) => n + (o !== f && o.mode === 'feed' && o.target && keenness(o) >= keenness(f) && Math.hypot(o.target.x - p.x, o.target.z - p.z) < FEED.crowd ? 1 : 0), 0);
+  function foodCentre(f) {
+    let x = 0, z = 0, n = 0;
+    for (const p of pellets) if (p.age >= 0 && whole(p) >= 0.3) { x += p.x; z += p.z; n++; }
+    return n ? { x: x / n, z: z / n } : { x: f.x, z: f.z };
+  }
+  // Off round the food for a while, carrying on the way it is already turning.
+  function startLap(f, scale = 1) {
+    release(f);
+    f.lap = mix(FEED.lap[0], FEED.lap[1], random()) * scale;
+    const c = foodCentre(f);
+    f.side = Math.sign((f.x - c.x) * Math.sin(f.heading) - (f.z - c.z) * Math.cos(f.heading)) || 1;
+  }
 
   const mouthPoint = (f) => ({ x: f.x + Math.cos(f.heading) * f.len * COM, z: f.z + Math.sin(f.heading) * f.len * COM });
 
@@ -349,18 +384,23 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
 
     // --- What does it want to do?
     const hungry = pellets.some((p) => p.age >= 0 && whole(p) >= 0.3);
+    f.full = approach(f.full, 0, FEED.digest, dt);
+    if (!hungry) f.hunger = -1;
+    else if (f.hunger < 0) f.hunger = f.appetite * (0.4 + random() * 0.9);
+    const keen = keenness(f);
     if (f.mode !== 'startle') {
-      if (hungry) {
-        // Food is noticed after a moment, sooner by a fish that is close to it.
+      if (hungry && keen > FEED.keen) {
+        // Food is noticed after a moment, sooner by a fish that is close to it or keen.
         if (f.mode !== 'feed') {
           const near = choosePellet(f);
           const d = near ? Math.hypot(near.x - f.x, near.z - f.z) : 9;
-          f.notice += dt * (0.35 + 1.6 / (0.4 + d)) * (0.6 + f.boldness * 0.6);
-          if (f.notice > 1) { setMode(f, 'feed'); f.notice = 0; }
+          f.notice += dt * (0.35 + 1.6 / (0.4 + d)) * (0.2 + keen * 1.2);
+          if (f.notice > 1) { setMode(f, 'feed'); f.notice = 0; f.lap = 0; }
         }
       } else {
         f.notice = 0;
-        if (f.mode === 'feed') { release(f); setMode(f, 'cruise'); f.bored = 3 + random() * 4; }
+        // Had its fill, or the food is gone: it swims off rather than hanging about the spot.
+        if (f.mode === 'feed') { release(f); setMode(f, 'cruise'); f.mood = 'glide'; f.moodTime = 0; f.bored = 3 + random() * 4; }
       }
     }
     if (f.mode === 'cruise' && cursor.active && f.bored <= 0 && cursor.still > CURIOUS.wait) {
@@ -437,36 +477,54 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
       wantPitch = smooth(0.5, 0.12, d) * 0.16;
       yawLimit = CURIOUS.turn + 1.3 * f.speed / f.len; quickness = 1.2;
     } else if (f.mode === 'feed') {
-      if (!f.target || !pellets.includes(f.target) || whole(f.target) < 0.3) {
+      f.lap -= dt;
+      if (f.lap <= 0 && (!f.target || !pellets.includes(f.target) || whole(f.target) < 0.3)) {
         release(f);
-        f.target = choosePellet(f);
-        if (f.target) f.target.claims++;
+        const p = choosePellet(f);
+        // A keener crowd already at it: hang back and come round again, a little less keen.
+        if (p && crowdAt(p, f) > (keen > 0.5 ? 2 : 1)) { f.hunger -= 0.05; startLap(f, 0.6); }
+        else if (p) { f.target = p; p.claims++; f.lap = 0; }
       }
-      if (f.target) {
+      if (f.lap > 0 || !f.target) {
+        // Circling: out from the food and round it a little way off, never stopping, until it
+        // swings back in. Steering toward the ring's tangent, turned in or out by how far off it is.
+        const c = foodCentre(f), rx = f.x - c.x, rz = f.z - c.z, d = Math.hypot(rx, rz);
+        wantHeading = Math.atan2(rz, rx) + f.side * (Math.PI / 2 + clamp((d - FEED.ring[0] - f.len * FEED.ring[1]) * 1.6, -0.9, 0.9));
+        wantSpeed = f.cruise * (1 + keen * 0.5);
+        wantDepth = 0.07 + f.len * 0.085;               // just under the film, ready to come up again
+        yawLimit = 0.5 + 1.3 * f.speed / f.len; quickness = 0.4;
+      } else {
         const dx = f.target.x - mouth.x, dz = f.target.z - mouth.z, d = Math.hypot(dx, dz);
         // Aimed from the body, not the mouth: a fish pivots about its middle, so a pellet close
         // beside the head would otherwise stay just out of reach however it turned.
         const cx = f.target.x - f.x, cz = f.target.z - f.z, reach = f.len * COM;
-        wantHeading = Math.atan2(cz, cx);
-        wantSpeed = clamp(0.08 + d * 0.75, 0.08, 0.5 + f.boldness * 0.2) * (0.75 + f.len * 0.5);
-        // Food off to one side is not circled: the fish checks, nearly stops, and pivots onto it.
-        const off = Math.abs(wrap(wantHeading - f.heading));
-        wantSpeed *= mix(1, 0.12, smooth(0.35, 1.4, off) * smooth(0.7, 0.1, d));
-        // Too close to bring the mouth round onto it: back off a little with the pectorals.
-        if (Math.hypot(cx, cz) < reach * 0.85) wantSpeed = -0.05;
+        // It turns onto food more sharply than it ever turns cruising.
+        const bearing = wrap(Math.atan2(cz, cx) - f.heading), off = Math.abs(bearing);
+        wantHeading = f.heading + clamp(bearing * 3, -2.5, 2.5);
+        // Hurries over from afar, comes in steadily, then lunges the last stretch once lined up.
+        const lunge = (0.24 + keen * 0.14) * (0.8 + f.len * 0.4);
+        const over = f.cruise * (1.1 + keen * 0.6) * mix(1, 1.5, smooth(0.6, 1.5, d));
+        wantSpeed = mix(over, lunge, smooth(0.45, 0.12, d) * smooth(0.5, 0.15, off));
+        // Food off to one side: it eases up to turn tighter onto it, but keeps swimming.
+        wantSpeed *= mix(1, 0.4, smooth(0.3, 1.2, off) * smooth(0.8, 0.2, d));
+        // Overshot, too close to bring the mouth round, or at it too long: peel off and come again.
+        if (Math.hypot(cx, cz) < reach * 0.85 || (d < 0.3 && off > 1.3) || f.lap < -FEED.give) startLap(f, 0.5);
         // Rises as it closes, so the mouth meets the pellet at the surface.
-        const rise = smooth(0.9, 0.15, d);
+        const rise = smooth(1.2, 0.3, d);
         wantDepth = mix(f.depthHome, 0.035 + f.len * 0.085, rise);
         wantPitch = rise * 0.24 + smooth(0.12, 0.03, d) * 0.3;
-        yawLimit = 1.5 + f.speed * 3 + smooth(0.4, 0.05, d) * 1.5; quickness = 0.22;
-        if (d < 0.03 + f.len * 0.025 && f.depth < 0.07 + f.len * 0.1) {
+        yawLimit = 1.2 + f.speed * 3 + smooth(0.4, 0.05, d) * 1.2; quickness = 0.15;
+        // A koi sucks food in from a little way off its lips.
+        if (f.target && d < 0.05 + f.len * 0.06 && f.depth < 0.07 + f.len * 0.1) {
           const i = pellets.indexOf(f.target);
           if (i >= 0) pellets.splice(i, 1);
-          f.target = null; f.gulp = 1; stats.eaten++; stats.gulps++;
+          for (const o of fish) if (o.target === f.target) o.target = null;
+          f.gulp = 1; f.full += FEED.bite; stats.eaten++; stats.gulps++;
           // The lips break the film: a spray of bubbles and a wet shine where the head came up.
           if (splashes.length >= 8) splashes.shift();
           splashes.push({ x: mouth.x, z: mouth.z, age: 0, size: 0.04 + f.len * 0.06, seed: random() });
           ripple(mouth.x, mouth.z, 0.022 + f.len * 0.012, 0.75);
+          startLap(f);
         }
       }
     } else if (f.mode === 'startle') {
@@ -487,7 +545,7 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
       const ox = px > right - soft ? (px - (right - soft)) / soft : px < -left + soft ? (px + left - soft) / soft : 0;
       const oz = pz > mz - soft ? (pz - (mz - soft)) / soft : pz < -mz + soft ? (pz + mz - soft) / soft : 0;
       const out = Math.min(1.4, Math.hypot(ox, oz));
-      if (out > 0 && f.mode !== 'feed') {
+      if (out > 0 && (f.mode !== 'feed' || f.lap > 0)) {
         // Turn along the bank toward the open water rather than bouncing straight back.
         const home = Math.atan2(-f.z * 0.6 - oz, -f.x * 0.25 - ox * 1.5);
         wantHeading = f.heading + wrap(home - f.heading) * Math.min(1, out * 1.2) + wrap(wantHeading - f.heading) * Math.max(0, 1 - out * 1.2);
@@ -499,11 +557,17 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
         const dx = f.x - o.x, dz = f.z - o.z, d = Math.hypot(dx, dz), room = (f.len + o.len) * 0.5;
         if (d > room * 1.5 || d < 1e-4) continue;
         const press = 1 - d / (room * 1.5);
+        // Circling the food, koi steer well clear of each other. One coming in for a pellet holds
+        // its line and is shouldered off by touch instead (see stepContacts).
+        if (f.mode === 'feed') {
+          if (f.lap > 0 && Math.abs(f.depth - o.depth) < 0.15) wantHeading += wrap(Math.atan2(dz, dx) - f.heading) * press * 1.2;
+          continue;
+        }
         // Cruising koi keep a little room between them, giving way sideways; two at the same
         // depth also part vertically, one slipping under the other. A follower keeps its line.
         const give = f.mood === 'follow' && o === f.leader ? 0.3 : 1;
-        if (f.mode !== 'feed') wantHeading += wrap(Math.atan2(dz, dx) - f.heading) * press * (Math.abs(f.depth - o.depth) < 0.1 ? 0.7 : 0.35) * give;
-        if (Math.abs(f.depth - o.depth) < 0.1 && f.mode !== 'feed') wantDepth += (f.depthHome >= o.depthHome ? 0.14 : -0.06) * press;
+        wantHeading += wrap(Math.atan2(dz, dx) - f.heading) * press * (Math.abs(f.depth - o.depth) < 0.1 ? 0.7 : 0.35) * give;
+        if (Math.abs(f.depth - o.depth) < 0.1) wantDepth += (f.depthHome >= o.depthHome ? 0.14 : -0.06) * press;
       }
       // Loose company: a fish far from all the others drifts back toward them.
       if (f.mode === 'cruise') {
@@ -512,6 +576,12 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
         cx /= fish.length; cz /= fish.length;
         const d = Math.hypot(cx - f.x, cz - f.z);
         if (d > 2.2) wantHeading += wrap(Math.atan2(cz - f.z, cx - f.x) - f.heading) * smooth(2.2, 3.6, d) * 0.4;
+        // A fish not after the food gives the feeding a wide berth instead of drifting through it.
+        if (hungry) {
+          const c = foodCentre(f), near = smooth(1.1, 0.4, Math.hypot(f.x - c.x, f.z - c.z));
+          wantHeading += wrap(Math.atan2(f.z - c.z, f.x - c.x) - f.heading) * near * 0.6;
+          wantSpeed = Math.max(wantSpeed, f.cruise * 0.8 * near);
+        }
       }
     }
 
@@ -538,7 +608,7 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
     f.x += Math.cos(f.heading) * f.speed * dt;
     f.z += Math.sin(f.heading) * f.speed * dt;
     const floor = POND_DEPTH - 0.25, ceiling = 0.03 + f.len * 0.08;
-    f.depth = approach(f.depth, clamp(wantDepth, ceiling, floor), f.mode === 'feed' ? 0.7 : 1.6, dt);
+    f.depth = approach(f.depth, clamp(wantDepth, ceiling, floor), f.mode === 'feed' ? 0.45 : 1.6, dt);
     f.pitch = approach(f.pitch, wantPitch, 0.5, dt);
     f.roll = approach(f.roll, clamp(-f.yawRate * (0.1 + f.speed * 0.4), -0.35, 0.35), 0.3, dt);
 
@@ -569,7 +639,7 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
 
     // --- Its mark on the surface: a fish close under the film drags a wake behind its back.
     // Feeding at the surface churns it: lips, gill covers and pectorals all break the film.
-    if (f.mode === 'feed' && f.depth < 0.15) {
+    if (f.mode === 'feed' && f.lap <= 0 && f.depth < 0.15) {
       f.churn += dt * (5 + random() * 4);
       if (f.churn > 1) {
         f.churn = 0;
@@ -659,24 +729,31 @@ export function createPond({ random, count = 8, halfW = 2.6, halfH = 1.1 } = {})
       const thick = (f.len + g.len) * 0.16;
       const gap = Math.abs(f.depth - g.depth);
       if (gap > thick) continue;
+      // Two at the food keep a little water between them, and are held to it firmly.
+      const feeding = f.mode === 'feed' && g.mode === 'feed', room = feeding ? FEED.room : 1, firm = feeding ? 1 : 0.5;
       let px = 0, pz = 0, worst = 0;
       for (const [sf, rf] of DISCS) for (const [sg, rg] of DISCS) {
         const fx = f.x + Math.cos(f.heading) * (COM - sf) * f.len, fz = f.z + Math.sin(f.heading) * (COM - sf) * f.len;
         const gx = g.x + Math.cos(g.heading) * (COM - sg) * g.len, gz = g.z + Math.sin(g.heading) * (COM - sg) * g.len;
-        const dx = fx - gx, dz = fz - gz, d = Math.hypot(dx, dz) || 1e-4, overlap = rf * f.len * f.girth + rg * g.len * g.girth - d;
+        const dx = fx - gx, dz = fz - gz, d = Math.hypot(dx, dz) || 1e-4, overlap = (rf * f.len * f.girth + rg * g.len * g.girth) * room - d;
         if (overlap > 0) { px += dx / d * overlap; pz += dz / d * overlap; worst = Math.max(worst, overlap); }
       }
       if (worst <= 0) continue;
       const push = 1 - 0.5 * gap / thick;
       const share = g.len / (f.len + g.len);
-      f.x += px * push * share * 0.5; f.z += pz * push * share * 0.5;
-      g.x -= px * push * (1 - share) * 0.5; g.z -= pz * push * (1 - share) * 0.5;
+      f.x += px * push * share * firm; f.z += pz * push * share * firm;
+      g.x -= px * push * (1 - share) * firm; g.z -= pz * push * (1 - share) * firm;
+      // Fish crowding the same food jostle sideways and nobody gives up the surface, but the less
+      // keen of two that bump on the way in gives way and comes round again.
+      if (feeding) {
+        const yields = keenness(f) < keenness(g) ? f : g;
+        if (f.target && g.target) startLap(yields, 0.6);
+        continue;
+      }
       // Shouldering through a crowd is slow going.
       f.speed *= 1 - Math.min(1, dt * 1.2); g.speed *= 1 - Math.min(1, dt * 1.2);
-      // The one with the deeper habit, or the smaller in a feeding crowd, ducks under.
-      // Fish crowding the same food jostle sideways: nobody gives up the surface.
-      if (f.mode === 'feed' && g.mode === 'feed') continue;
-      const under = f.depthHome > g.depthHome ? f : g;
+      // Otherwise one not feeding, or else the one with the deeper habit, ducks under.
+      const under = f.mode === 'feed' ? g : g.mode === 'feed' ? f : f.depthHome > g.depthHome ? f : g;
       under.depth = Math.min(POND_DEPTH - 0.25, under.depth + dt * 0.1 * (1 - gap / thick));
     }
   }
