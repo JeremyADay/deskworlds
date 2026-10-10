@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
-import { QUALITY_PRESETS as presets, activeQuality, frameRate, framebufferSize, renderScale } from '../../shared/render-policy.js';
-import { preferredQuality, reportSceneError } from '../../shared/controls.js';
+import { QUALITY_PRESETS as presets, qualityName, activeQuality, frameRate, framebufferSize, renderScale } from '../../shared/render-policy.js';
+import { installControls, preferredQuality, reportSceneError } from '../../shared/controls.js';
 import { createFrameLoop } from '../../shared/frame-loop.js';
 import { randomGenerator } from '../../shared/random.js';
 import { createFire, FIXED_STEP } from './fire.js';
@@ -9,11 +9,12 @@ import { createRenderer } from './render.js';
 const canvas = document.querySelector('#scene'), stage = document.querySelector('#stage'), loading = document.querySelector('#loading');
 const params = new URLSearchParams(location.search), isHost = document.documentElement.dataset.motion === 'host';
 const capture = params.has('capture');
+if (capture) document.body.classList.add('clean', 'capture');
 // Fuel added per metre the cursor sweeps near the fire: a few seconds of fanning revives it.
 const FAN = 0.45;
 // The flame is marched per pixel; past this many the frame rate suffers more than the picture gains.
 const MAX_PIXELS = 4.2e6;
-const quality = preferredQuality(params);
+let quality = preferredQuality(params);
 let hostRate = isHost ? 0 : 60, onBattery = false, contextLost = false, disposed = false;
 let paused = capture || (!isHost && matchMedia('(prefers-reduced-motion: reduce)').matches);
 let changeRate = () => {}, changePower = () => {}, stir = () => {};
@@ -54,11 +55,13 @@ async function start() {
     if (cpuEMA > 1000 / fps() * 0.85 || elapsed > 1.65 / fps()) slowSamples++; else slowSamples = Math.max(0, slowSamples - 1);
     if (slowSamples > 80 && autoScale > 0.72 && !capture) { autoScale = Math.max(0.72, autoScale - 0.1); slowSamples = 0; resize(false); }
   }
+  let updateControls = () => {};
   function restart() {
     accumulator = 0;
     loop?.setRate(fps());
     loop?.setPaused(paused);
     loop?.setHidden(document.hidden || contextLost || disposed || zeroSize);
+    updateControls();
   }
   changeRate = restart;
   changePower = () => { resize(); restart(); };
@@ -100,10 +103,9 @@ async function start() {
   canvas.addEventListener('pointerleave', () => { fire.setCursor(null); last = null; });
   canvas.addEventListener('click', () => stir());
   stir = () => { if (running()) fire.stir(1); };
-  document.addEventListener('keydown', event => {
-    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.code === 'Space') { event.preventDefault(); window.scenePause(!paused); }
-    else if (event.key.toLowerCase() === 'f') { if (document.fullscreenElement) document.exitFullscreen(); else stage.requestFullscreen?.().catch(() => {}); }
+  updateControls = installControls({
+    stage, isPaused: () => paused, isRunning: running, pause: window.scenePause, feed: stir, feedIcon: 'stir', quality: () => quality,
+    setQuality(value) { quality = qualityName(value); autoScale = 1; resize(); restart(); },
   });
   document.addEventListener('visibilitychange', () => { fire.setCursor(null); if (!document.hidden) { resize(false); if (paused) render(); } restart(); });
   const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');

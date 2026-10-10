@@ -1,4 +1,8 @@
 import { reportSceneError } from './controls.js';
+import { installWorldSwitcher } from '../../ui/world-switcher.js';
+
+// The way to other worlds works even when this one cannot start.
+installWorldSwitcher();
 
 // WebKit can report the document loaded before this module has run, so the scene's
 // power and rate callbacks may not exist yet when the host first sends. The host waits
