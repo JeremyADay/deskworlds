@@ -32,6 +32,7 @@ h1, h2 { font: 400 var(--text-brand)/1 var(--font-body); letter-spacing: -.04em;
 .is-active .portal-caption { visibility: visible; }
 .enter { display: inline-block; font: 400 var(--text-body) var(--font-body); letter-spacing: 0; margin-left: var(--space-3); transition: transform var(--motion-duration) var(--motion-ease); }
 .gallery:not(.is-moving) .portal:hover .enter, .gallery:not(.is-moving) .portal:focus-visible .enter { transform: translate(var(--space-1), calc(-1 * var(--space-1))); }
+.gallery-fallback { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--text-muted); }
 .preview-status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); font-size: var(--text-body); }
 @media (max-width: 900px) {
   :root { --masthead-height: 92px; --page-gutter: var(--space-6); }

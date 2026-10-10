@@ -230,6 +230,7 @@ gallery.addEventListener('click', event => {
 }, true);
 
 render();
+announce();
 for (const image of gallery.querySelectorAll('.portal-image img')) {
   const showUnavailable = () => {
     image.hidden = true;
