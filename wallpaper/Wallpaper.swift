@@ -19,7 +19,7 @@ let sceneHost = "local"
 
 /// The scenes the app can show, each a directory under scenes/ with a wallpaper.html.
 enum World: String, CaseIterable {
-  case riverscape, reefscape, bettascape, plasmascape, koiscape, bonfirescape
+  case riverscape, reefscape, bettascape, plasmascape, koiscape, bonfirescape, lakescape
 
   var title: String {
     switch self {
@@ -29,11 +29,26 @@ enum World: String, CaseIterable {
     case .plasmascape: "Plasma globe"
     case .koiscape: "Koi pond"
     case .bonfirescape: "Bonfire"
+    case .lakescape: "Lake storm"
     }
   }
-  /// Only worlds with something to eat have anything to feed; the bonfire is stirred instead.
+  /// Only worlds with something to eat have anything to feed; the bonfire is stirred
+  /// instead, and the lake storm's rail lights are switched.
   var canFeed: Bool { self != .plasmascape }
-  var feedTitle: String { self == .bonfirescape ? "Stir the Fire" : "Feed" }
+  var feedTitle: String {
+    switch self {
+    case .bonfirescape: "Stir the Fire"
+    case .lakescape: "Holiday Lights"
+    default: "Feed"
+    }
+  }
+  /// Lake storm's action is a switch that stays as it is put, not a thing done once. The
+  /// page keeps nothing between runs, so the app remembers which way it stands.
+  var isSwitch: Bool { self == .lakescape }
+  static var holidayLights: Bool {
+    get { UserDefaults.standard.bool(forKey: "holidayLights") }
+    set { UserDefaults.standard.set(newValue, forKey: "holidayLights") }
+  }
   var page: String { "/scenes/\(rawValue)/wallpaper.html" }
   /// What shows before the page has drawn anything, matched to each scene's own dark.
   var background: NSColor {
@@ -42,6 +57,7 @@ enum World: String, CaseIterable {
     case .reefscape: NSColor(calibratedRed: 0.043, green: 0.094, blue: 0.145, alpha: 1)
     case .bettascape, .plasmascape, .bonfirescape: .black
     case .koiscape: NSColor(calibratedRed: 0.016, green: 0.024, blue: 0.02, alpha: 1)
+    case .lakescape: NSColor(calibratedRed: 0.02, green: 0.027, blue: 0.043, alpha: 1)
     }
   }
 
@@ -194,7 +210,10 @@ final class Wallpaper: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     window.orderFrontRegardless()
 
     // Native: full display resolution plugged in, the Balanced profile on battery.
-    let page = "\(sceneScheme)://\(sceneHost)\(world.page)?quality=native"
+    // A world with a switch is told how it was left.
+    let page =
+      "\(sceneScheme)://\(sceneHost)\(world.page)?quality=native"
+      + (world.isSwitch ? "&holiday=\(World.holidayLights ? 1 : 0)" : "")
     view.load(URLRequest(url: URL(string: page)!))
   }
 
@@ -244,9 +263,11 @@ final class Wallpaper: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
   /// window never takes a mouse event, so there is no cursor position to drop it at: the
   /// page picks its own spot on the surface. Nothing is sent while the scene is stopped,
   /// where the food would only pile up unseen until it started again.
-  func feed() {
-    guard loaded, rate > 0 else { return }
-    view.evaluateJavaScript("typeof sceneFeed === 'function' && sceneFeed()")
+  /// A switch is different: it is told which way it now stands, and told even while
+  /// stopped, since a setting does not pile up.
+  func feed(_ setting: String = "") {
+    guard loaded, rate > 0 || !setting.isEmpty else { return }
+    view.evaluateJavaScript("typeof sceneFeed === 'function' && sceneFeed(\(setting))")
   }
 
   /// A cursor position in this screen's coordinates, or nil when the cursor left it.
@@ -609,12 +630,18 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // again and then all arrive at once, so Feed says so rather than promising a feeding.
     feed.isEnabled = applied > 0 && world.canFeed
     feed.title = world.feedTitle
+    feed.state = world.isSwitch && World.holidayLights ? .on : .off
   }
 
   /// Every screen, because each one runs its own world rather than one
   /// scene stretched across them: feeding only the screen the menu bar happens to be on
   /// would leave the others unfed.
   @objc private func feedEveryScreen() {
+    if world.isSwitch {
+      World.holidayLights.toggle()
+      for screen in screens { screen.feed(World.holidayLights ? "true" : "false") }
+      return
+    }
     for screen in screens { screen.feed() }
   }
 

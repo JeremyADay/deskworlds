@@ -1,0 +1,3 @@
+@import url("../../ui/scene.css");
+/* Night outside a cabin window: the page around it is the same blue-black. */
+:root { --background: #05070b; }
