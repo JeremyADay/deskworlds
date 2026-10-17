@@ -14,72 +14,11 @@
       <h1><svg class="logo" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M24 5 43 15.5 24 26 5 15.5Z" fill="currentColor" stroke-width="3.5"/><path d="M24 5 43 15.5V31.5L24 42 5 31.5V15.5ZM24 26V42" stroke-width="3.5"/><path d="M5 21C6.55 22.2 8.17 23.52 9.75 24.12C11.33 24.72 12.93 24.64 14.5 25.16C16.07 25.68 17.65 26.96 19.25 28.38C20.85 29.8 22.38 30.9 24 31.5C25.62 30.83 27.15 29.57 28.75 28.2C30.35 26.83 31.9 25.75 33.5 25.37C35.1 24.99 36.65 25.02 38.25 24.3C39.85 23.58 41.38 22.1 43 21M5 26.3C6.55 27.52 8.17 28.21 9.75 28.54C11.33 28.87 12.93 29.22 14.5 30.37C16.07 31.52 17.65 33.36 19.25 34.56C20.85 35.76 22.38 36.27 24 36.8C25.62 35.87 27.15 34.27 28.75 33.29C30.35 32.31 31.9 32.1 33.5 31.88C35.1 31.66 36.65 31.04 38.25 29.81C39.85 28.58 41.38 27.07 43 26.3" stroke-width="2.1"/></svg>Deskworlds</h1>
     </header>
     <main class="gallery" aria-label="Worlds" aria-roledescription="carousel" aria-describedby="gallery-help" aria-keyshortcuts="ArrowLeft ArrowRight">
-      <p class="sr-only" id="gallery-help">Swipe, select a neighbouring preview, or use the left and right arrow keys to choose one of seven worlds; the list wraps around. Open the selected image or name to enter.</p>
-      <p class="sr-only" id="gallery-status" role="status" aria-live="polite" aria-atomic="true">Riverbed</p>
-      <a draggable="false" class="portal river is-active" id="river" href="scenes/riverscape/" aria-label="Open Riverbed">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/riverscape-wide.png" alt="Fish swimming through green rivergrass and driftwood" width="1440" height="750" fetchpriority="high" />
-        </div>
-        <div class="portal-caption">
-          <h2>Riverbed<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal reef" id="reef" role="button" href="scenes/reefscape/" aria-label="Preview Coral reef">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/reefscape-wide.png" alt="A coral reef with clownfish, anemones and branching corals" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Coral reef<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal betta" id="betta" role="button" href="scenes/bettascape/" aria-label="Preview Betta">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/bettascape-wide.png" alt="A halfmoon betta with its long fins spread against a black background" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Betta<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal plasma" id="plasma" role="button" href="scenes/plasmascape/" aria-label="Preview Plasma globe">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/plasmascape-wide.png" alt="A plasma globe glowing on a walnut desk in a dark room, violet filaments running from its electrode to the glass" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Plasma globe<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal koi" id="koi" role="button" href="scenes/koiscape/" aria-label="Preview Koi pond">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/koiscape-wide.png" alt="Koi of several colours gliding through dark water under lily pads, seen from above" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Koi pond<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal bonfire" id="bonfire" role="button" href="scenes/bonfirescape/" aria-label="Preview Bonfire">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/bonfirescape-wide.png" alt="A bonfire burning in the dark, a coiled sword driven into its charred logs and sparks rising" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Bonfire<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
-      <a draggable="false" class="portal lake" id="lake" role="button" href="scenes/lakescape/" aria-label="Preview Lake storm">
-        <div class="portal-image">
-          <span class="preview-status" hidden>Preview unavailable</span>
-          <img draggable="false" src="docs/images/lakescape-wide.png" alt="A rain-streaked cabin window at night: a porch rail hung with warm lights, two chairs by a fire pit on the beach, and lightning over a mountain lake" width="1440" height="750" />
-        </div>
-        <div class="portal-caption">
-          <h2>Lake storm<span class="enter" aria-hidden="true">↗</span></h2>
-        </div>
-      </a>
+      <p class="sr-only" id="gallery-help">Swipe, select a neighbouring preview, or use the left and right arrow keys to choose a world; the list wraps around. Open the selected image or name to enter.</p>
+      <p class="sr-only" id="gallery-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <noscript><p class="gallery-fallback">The worlds need JavaScript to run.</p></noscript>
     </main>
+    <script type="module" src="ui/portals.js"></script>
     <script type="module" src="ui/gallery.js"></script>
   </body>
 </html>

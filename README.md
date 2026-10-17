@@ -39,11 +39,11 @@ All worlds also run in any browser with WebGL2. With Node.js 20 or newer:
 npm start
 ```
 
-Then open http://127.0.0.1:8080. Click a scene to drop food. Space pauses, F toggles fullscreen, and H hides the controls.
+Then open http://127.0.0.1:8080. Click a scene to drop food, or switch worlds from the menu at the top right. Space pauses, F toggles fullscreen, and H hides the controls.
 
 ## Development
 
-There are no dependencies to install. Each world lives in `scenes/<name>/`, the gallery in `ui/`, and the macOS app in `wallpaper/`.
+There are no dependencies to install. Each world lives in `scenes/<name>/`, the gallery in `ui/`, and the macOS app in `wallpaper/`. The list of worlds that the gallery and the world menu show is `ui/worlds.js`; the macOS app keeps its own in `wallpaper/Wallpaper.swift`, and a test checks the two agree.
 
 ```sh
 npm run check

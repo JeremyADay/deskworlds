@@ -628,7 +628,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSMenuDelegate {
     pause.isEnabled = !lowPower
     // Food that nothing is going to draw would sit unseen until the scene started
     // again and then all arrive at once, so Feed says so rather than promising a feeding.
-    feed.isEnabled = applied > 0 && world.canFeed
+    // A switch is a setting, not food, so it can be thrown while nothing draws.
+    feed.isEnabled = world.canFeed && (applied > 0 || world.isSwitch)
     feed.title = world.feedTitle
     feed.state = world.isSwitch && World.holidayLights ? .on : .off
   }

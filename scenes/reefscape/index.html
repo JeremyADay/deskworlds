@@ -28,14 +28,9 @@
       ></canvas>
       <nav class="chrome" aria-label="Worlds">
         <a class="home-link" href="../../" aria-label="Deskworlds home">Deskworlds</a>
-        <div class="scene-nav">
-          <a href="../riverscape/">Riverbed</a>
-          <span aria-current="page">Coral reef</span>
-          <a href="../bettascape/">Betta</a>
-          <a href="../plasmascape/">Plasma globe</a>
-          <a href="../koiscape/">Koi pond</a>
-          <a href="../bonfirescape/">Bonfire</a>
-          <a href="../lakescape/">Lake storm</a>
+        <div class="world-switcher">
+          <button disabled id="worlds" aria-expanded="false" aria-controls="world-list" title="Switch world">Coral reef</button>
+          <ul id="world-list" hidden></ul>
         </div>
       </nav>
       <footer class="chrome" aria-label="World controls">

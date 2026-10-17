@@ -7,13 +7,14 @@ export function preferredQuality(params) {
   return qualityName(params.get('quality') || saved || (navigator.connection?.saveData ? 'eco' : 'balanced'));
 }
 
-export function installControls({ stage, isPaused, isRunning, pause, feed, quality, setQuality }) {
+// The feed button's label is its text in the page (Feed, Stir); feedIcon names its icon in ui/icons.js.
+export function installControls({ stage, isPaused, isRunning, pause, feed, feedIcon = 'feed', quality, setQuality }) {
   document.querySelectorAll('.chrome button, .chrome select, #show-controls').forEach(element => { element.disabled = false; });
   const pauseButton = document.querySelector('#pause');
   const feedButton = document.querySelector('#feed');
   const select = document.querySelector('#quality');
   const fullscreenButton = document.querySelector('#fullscreen');
-  setActionIcon(feedButton, 'feed', 'Feed');
+  setActionIcon(feedButton, feedIcon, feedButton?.textContent.trim());
   function refreshFullscreen() {
     const active = Boolean(document.fullscreenElement);
     setActionIcon(fullscreenButton, active ? 'exit-fullscreen' : 'fullscreen', active ? 'Exit fullscreen' : 'Fullscreen', 'F');
@@ -50,7 +51,7 @@ export function installControls({ stage, isPaused, isRunning, pause, feed, quali
     refresh();
   });
   document.addEventListener('keydown', event => {
-    if (event.repeat || event.target.closest('button,select,input,textarea,a,[contenteditable]')) return;
+    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.target.closest('button,select,input,textarea,a,[contenteditable]')) return;
     if (event.code === 'Space') { event.preventDefault(); pause(!isPaused()); }
     else if (event.key.toLowerCase() === 'f') fullscreen();
     else if (event.key.toLowerCase() === 'h') clean(!document.body.classList.contains('clean'));

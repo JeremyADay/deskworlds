@@ -28,20 +28,15 @@
       ></canvas>
       <nav class="chrome" aria-label="Worlds">
         <a class="home-link" href="../../" aria-label="Deskworlds home">Deskworlds</a>
-        <div class="scene-nav">
-          <a href="../riverscape/">Riverbed</a>
-          <a href="../reefscape/">Coral reef</a>
-          <a href="../bettascape/">Betta</a>
-          <a href="../plasmascape/">Plasma globe</a>
-          <a href="../koiscape/">Koi pond</a>
-          <a href="../bonfirescape/">Bonfire</a>
-          <span aria-current="page">Lake storm</span>
+        <div class="world-switcher">
+          <button disabled id="worlds" aria-expanded="false" aria-controls="world-list" title="Switch world">Lake storm</button>
+          <ul id="world-list" hidden></ul>
         </div>
       </nav>
       <footer class="chrome" aria-label="World controls">
         <div class="buttons">
           <button disabled id="pause" aria-pressed="false" title="Space">Pause</button>
-          <button disabled id="feed" aria-pressed="false">Holiday Lights</button>
+          <button disabled id="feed" aria-pressed="false">Holiday lights</button>
           <button disabled id="fullscreen" title="F">Fullscreen</button>
         </div>
         <div class="preferences">

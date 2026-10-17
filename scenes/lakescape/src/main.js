@@ -2,7 +2,6 @@ import { QUALITY_PRESETS as presets, qualityName, activeQuality, frameRate, fram
 import { installControls, reportSceneError, preferredQuality } from '../../shared/controls.js';
 import { createFrameLoop } from '../../shared/frame-loop.js';
 import { randomGenerator } from '../../shared/random.js';
-import { setActionIcon } from '../../../ui/icons.js';
 import { createStorm, FIXED_STEP } from './storm.js';
 import { createGlass } from './glass.js';
 import { createRenderer } from './render.js';
@@ -105,10 +104,7 @@ async function start() {
   canvas.addEventListener('pointermove', (event) => point(event.clientX, event.clientY), { passive: true });
   canvas.addEventListener('pointerleave', () => glass.lift());
   const feedButton = document.querySelector('#feed');
-  function showHoliday() {
-    setActionIcon(feedButton, 'lights', 'Holiday Lights');
-    feedButton?.setAttribute('aria-pressed', String(storm.state.holidayOn));
-  }
+  const showHoliday = () => feedButton?.setAttribute('aria-pressed', String(storm.state.holidayOn));
   feed = (on) => {
     const now = typeof on === 'boolean' ? storm.setHoliday(on) : storm.toggleHoliday();
     if (!capture) try { localStorage.setItem(HOLIDAY_KEY, now ? '1' : '0'); } catch {}
@@ -116,7 +112,7 @@ async function start() {
   };
   updateControls = installControls({
     stage, isPaused: () => paused, isRunning: running,
-    pause: window.scenePause, feed: () => feed(), quality: () => quality,
+    pause: window.scenePause, feed: () => feed(), feedIcon: 'lights', quality: () => quality,
     setQuality(value) { quality = qualityName(value); autoScale = 1; resize(); restart(); },
   });
   showHoliday();
